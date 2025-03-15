@@ -10,13 +10,16 @@
 char ssid[] = "IoT - WIFI";
 char pass[] = "03GDVBH223";
 
-const int moistureSensorPin = 7;
-const int redLedPin = 9; //elettrovalvola
-const int trigPin = 3;
-const int echoPin = 5;
-const int LedRGB = 11; //Led RGB per indicare se c'è acqua o meno nel serbatoio (in mancanza o in aggiunta ad alexa)
-const int LedRGB2 = 12; //Led RGB per indicare se c'è acqua o meno nel serbatoio (in mancanza o in aggiunta ad alexa)
-const int piezo = 1; //piezoelettrico sonoro che abbiamo usato a lezione per indicare se c'è acqua o meno nel serbatoio (in mancanza o in aggiunta ad alexa)
+// Definizione pin per ESP32 Lolin S2 Mini
+#define MOISTURESENSORPIN 7    // Sensore di umidità
+#define REDLEDPIN 9            // elettrovalvola
+#define TRIGPIN 3              // Trigger del sensore ultrasuoni
+#define ECHOPIN 5              // Echo del sensore ultrasuoni
+#define LEDRGB = 11; //Led RGB per indicare se c'è acqua o meno nel serbatoio (in mancanza o in aggiunta ad alexa)
+#define LEDRGB2 = 12; //Led RGB per indicare se c'è acqua o meno nel serbatoio (in mancanza o in aggiunta ad alexa)
+#define PIEZO = 1; //piezoelettrico sonoro che abbiamo usato a lezione per indicare se c'è acqua o meno nel serbatoio (in mancanza o in aggiunta ad alexa)
+
+#define SOGLIA_UM 7000 
 
 BlynkTimer timer;
 
@@ -45,16 +48,16 @@ void sendDistanceToBlynk() {
         Blynk.virtualWrite(V4, 0);     // LED display blynk Verde SPENTO
         Blynk.logEvent("alexa_alert", "Riempire contenitore di acqua"); // Attiva Alexa con messaggio
 
-        digitalWrite(LedRGB, HIGH);  // LED RGB Rosso
-        digitalWrite(LedRGB2, LOW);  // LED RGB Verde spento
-        digitalWrite(piezo, HIGH);   // Piezoelettrico suona
+        digitalWrite(LEDRGB, HIGH);  // LED RGB Rosso
+        digitalWrite(LEDRGB2, LOW);  // LED RGB Verde spento
+        digitalWrite(PIEZO, HIGH);   // Piezoelettrico suona
     } else {
         Blynk.virtualWrite(V3, 0);     // LED display blynk Rosso SPENTO
         Blynk.virtualWrite(V4, 255);   // LED display blynk Verde ACCESO
 
-        digitalWrite(LedRGB, LOW);   // LED RGB Rosso spento
-        digitalWrite(LedRGB2, HIGH); // LED RGB Verde acceso
-        digitalWrite(piezo, LOW);    // Piezoelettrico non suona
+        digitalWrite(LEDRGB, LOW);   // LED RGB Rosso spento
+        digitalWrite(LEDRGB2, HIGH); // LED RGB Verde acceso
+        digitalWrite(PIEZO, LOW);    // Piezoelettrico non suona
     }
 }
 
@@ -70,9 +73,9 @@ void setup() {
     pinMode(redLedPin, OUTPUT);
     pinMode(trigPin, OUTPUT);
     pinMode(echoPin, INPUT);
-    pinMode(LedRGB, OUTPUT);
-    pinMode(LedRGB2, OUTPUT);
-    pinMode(piezo, OUTPUT);
+    pinMode(LEDRGB, OUTPUT);
+    pinMode(LEDRGB2, OUTPUT);
+    pinMode(PIEZO, OUTPUT);
     Serial.begin(9600);
 
     Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
