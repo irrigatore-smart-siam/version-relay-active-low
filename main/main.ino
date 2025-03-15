@@ -23,24 +23,49 @@ char pass[] = "03GDVBH223";
 
 BlynkTimer timer;
 
-void sendDistanceToBlynk() {
+void checkMoisture() {
+    int moistureValue = analogRead(moistureSensorPin);
+    Serial.print("Umidità: ");
+    Serial.println(moistureValue);
+    
+    Blynk.virtualWrite(V2, moistureValue); // Invia il valore dell'umidità a Blynk su V2
+
+    /*
+
+    Attiva il LED giallo solo se l'umidità è sotto la soglia (da tenere ?)
+
+    if (moistureValue <= SOGLIA_UM) {
+      Blynk.virtualWrite(V5, 255); // LED GIALLO (Alexa_Terreno) acceso
+    } else {
+      Blynk.virtualWrite(V5, 0);   // LED GIALLO spento
+    }
+    
+    */
+}
+
+void checkWaterLevel() {
     long duration;
     float distance;
     
-    digitalWrite(trigPin, LOW);
+    // Generazione dell'impulso ultrasonico
+    digitalWrite(TRIGPIN, LOW);
     delayMicroseconds(2);
-    digitalWrite(trigPin, HIGH);
+    digitalWrite(TRIGPIN, HIGH);
     delayMicroseconds(10);
-    digitalWrite(trigPin, LOW);
+    digitalWrite(TRIGPIN, LOW);
     
-    duration = pulseIn(echoPin, HIGH);
+    // Lettura della durata dell'eco
+    duration = pulseIn(ECHOPIN, HIGH);
+
+    // Calcolo della distanza
     distance = (duration * 0.0343) / 2;
     
     Serial.print("Distanza: ");
     Serial.print(distance);
     Serial.println(" cm");
     
-    Blynk.virtualWrite(V1, distance); // Invia la distanza a Blynk su V1
+    // Invia la distanza a Blynk
+    Blynk.virtualWrite(V1, distance);
 
     // Controllo dei LED e del piezo
     if (distance > 4) {
@@ -61,14 +86,6 @@ void sendDistanceToBlynk() {
     }
 }
 
-void sendMoistureToBlynk() {
-    int moistureValue = analogRead(moistureSensorPin);
-    Serial.print("Umidità: ");
-    Serial.println(moistureValue);
-    
-    Blynk.virtualWrite(V2, moistureValue); // Invia il valore dell'umidità a Blynk su V2
-}
-
 void setup() {
     pinMode(redLedPin, OUTPUT);
     pinMode(trigPin, OUTPUT);
@@ -79,8 +96,8 @@ void setup() {
     Serial.begin(9600);
 
     Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
-    timer.setInterval(5000L, sendDistanceToBlynk);
-    timer.setInterval(5000L, sendMoistureToBlynk); // Aggiungi questa linea per inviare l'umidità ogni tot millisecondi
+    timer.setInterval(5000L, checkWaterLevel);
+    timer.setInterval(5000L, checkMoisture); // Aggiungi questa linea per inviare l'umidità ogni tot millisecondi
 }
 
 void loop() {
