@@ -24,93 +24,91 @@ char pass[] = "03GDVBH223";
 BlynkTimer timer;
 
 void checkMoisture() {
-    int moistureValue = analogRead(moistureSensorPin);
-    Serial.print("Umidità: ");
-    Serial.println(moistureValue);
+  int moistureValue = analogRead(moistureSensorPin);
+  Serial.print("Umidità: ");
+  Serial.println(moistureValue);
     
-    Blynk.virtualWrite(V2, moistureValue); // Invia il valore dell'umidità a Blynk su V2
+  Blynk.virtualWrite(V2, moistureValue); // Invia il valore dell'umidità a Blynk su V2
 
-    /*
+  /*
 
-    Attiva il LED giallo solo se l'umidità è sotto la soglia (da tenere ?)
+  Attiva il LED giallo solo se l'umidità è sotto la soglia (da tenere ?)
 
-    if (moistureValue <= SOGLIA_UM) {
-      Blynk.virtualWrite(V5, 255); // LED GIALLO (Alexa_Terreno) acceso
-    } else {
-      Blynk.virtualWrite(V5, 0);   // LED GIALLO spento
-    }
+  if (moistureValue <= SOGLIA_UM) {
+     Blynk.virtualWrite(V5, 255); // LED GIALLO (Alexa_Terreno) acceso
+  } else {
+    Blynk.virtualWrite(V5, 0);   // LED GIALLO spento
+  }
     
-    */
+  */
 }
 
 void checkWaterLevel() {
-    long duration;
-    float distance;
+  long duration;
+  float distance;
     
-    // Generazione dell'impulso ultrasonico
-    digitalWrite(TRIGPIN, LOW);
-    delayMicroseconds(2);
-    digitalWrite(TRIGPIN, HIGH);
-    delayMicroseconds(10);
-    digitalWrite(TRIGPIN, LOW);
+  // Generazione dell'impulso ultrasonico
+  digitalWrite(TRIGPIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIGPIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIGPIN, LOW);
     
-    // Lettura della durata dell'eco
-    duration = pulseIn(ECHOPIN, HIGH);
+  // Lettura della durata dell'eco
+  duration = pulseIn(ECHOPIN, HIGH);
 
-    // Calcolo della distanza
-    distance = (duration * 0.0343) / 2;
+  // Calcolo della distanza
+  distance = (duration * 0.0343) / 2;
     
-    Serial.print("Distanza: ");
-    Serial.print(distance);
-    Serial.println(" cm");
+  Serial.print("Distanza: ");
+  Serial.print(distance);
+  Serial.println(" cm");
     
-    // Invia la distanza a Blynk
-    Blynk.virtualWrite(V1, distance);
+  // Invia la distanza a Blynk
+  Blynk.virtualWrite(V1, distance);
 
-    // Controllo dei LED e del piezo
-    if (distance > 4) {
-        Blynk.virtualWrite(V3, 255);   // LED display blynk Rosso ACCESO
-        Blynk.virtualWrite(V4, 0);     // LED display blynk Verde SPENTO
-        Blynk.logEvent("alexa_alert", "Riempire contenitore di acqua"); // Attiva Alexa con messaggio
+  // Controllo dei LED e del piezo
+  if (distance > 4) {
+      Blynk.virtualWrite(V3, 255);   // LED display blynk Rosso ACCESO
+      Blynk.virtualWrite(V4, 0);     // LED display blynk Verde SPENTO
+      Blynk.logEvent("alexa_alert", "Riempire contenitore di acqua"); // Attiva Alexa con messaggio
 
-        digitalWrite(LEDRGB, HIGH);  // LED RGB Rosso
-        digitalWrite(LEDRGB2, LOW);  // LED RGB Verde spento
-        digitalWrite(PIEZO, HIGH);   // Piezoelettrico suona
-    } else {
-        Blynk.virtualWrite(V3, 0);     // LED display blynk Rosso SPENTO
-        Blynk.virtualWrite(V4, 255);   // LED display blynk Verde ACCESO
+      digitalWrite(LEDRGB, HIGH);  // LED RGB Rosso
+      digitalWrite(LEDRGB2, LOW);  // LED RGB Verde spento
+      digitalWrite(PIEZO, HIGH);   // Piezoelettrico suona
+  } else {
+      Blynk.virtualWrite(V3, 0);     // LED display blynk Rosso SPENTO
+      Blynk.virtualWrite(V4, 255);   // LED display blynk Verde ACCESO
 
-        digitalWrite(LEDRGB, LOW);   // LED RGB Rosso spento
-        digitalWrite(LEDRGB2, HIGH); // LED RGB Verde acceso
-        digitalWrite(PIEZO, LOW);    // Piezoelettrico non suona
-    }
+      digitalWrite(LEDRGB, LOW);   // LED RGB Rosso spento
+      digitalWrite(LEDRGB2, HIGH); // LED RGB Verde acceso
+      digitalWrite(PIEZO, LOW);    // Piezoelettrico non suona
+  }
 }
 
 void setup() {
-    pinMode(redLedPin, OUTPUT);
-    pinMode(trigPin, OUTPUT);
-    pinMode(echoPin, INPUT);
-    pinMode(LEDRGB, OUTPUT);
-    pinMode(LEDRGB2, OUTPUT);
-    pinMode(PIEZO, OUTPUT);
-    Serial.begin(9600);
+  // Configurazione dei pin
+  pinMode(REDLEDPIN, OUTPUT);
+  pinMode(TRIGPIN, OUTPUT);
+  pinMode(ECHOPIN, INPUT);
+  pinMode(LEDRGB, OUTPUT);
+  pinMode(LEDRGB2, OUTPUT);
+  pinMode(PIEZO, OUTPUT);
 
-    Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
-    timer.setInterval(5000L, checkWaterLevel);
-    timer.setInterval(5000L, checkMoisture); // Aggiungi questa linea per inviare l'umidità ogni tot millisecondi
+  Serial.begin(9600);
+
+  Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+
+  timer.setInterval(5000L, checkMoisture);    // Controlla l'umidità dopo 5 secondi -> x "do-while finale"
+  timer.setInterval(5000L, checkWaterLevel);  // Controlla il livello dell'acqua dopo 5 secondi -> x "do-while finale"
 }
 
 void loop() {
     Blynk.run();
     timer.run();
-
-    int moistureValue = analogRead(moistureSensorPin);
-    Serial.print("Umidità: ");
-    Serial.println(moistureValue);
-
-    int soglia = 7000;
     
-    if (moistureValue > soglia) {
+    //Irrigazione temporizzata, redLedPin = elettrovalvola -> versione finale ogni 24 ore (?)
+    if (moistureValue > SOGLIA_UM) {
         digitalWrite(redLedPin, HIGH);
         delay(3000);
         digitalWrite(redLedPin, LOW);
