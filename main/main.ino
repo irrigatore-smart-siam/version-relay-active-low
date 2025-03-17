@@ -35,10 +35,11 @@ void checkMoisture() {
     
   Blynk.virtualWrite(V2, moistureValue); // invia il valore dell'umidità a Blynk su V2
 
-  if (moistureValue <= SOGLIA_UM) {
+  if (moistureValue > SOGLIA_UM) {
     digitalWrite(REDLEDPIN, HIGH); //"accensione" elettrovalvola per irrigazione
-    // Utilizzo di un timer invece di delay per non bloccare l'esecuzione
-    timer.setTimeout(1000L, turnOffValve);
+    timer.setTimeout(3000L, turnOffValve);
+    //delay(3000);
+    //turnOffValve();
   } else {
     digitalWrite(REDLEDPIN, LOW);
   }
@@ -109,8 +110,8 @@ void setup() {
   Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
 
   // Ciclo do-while, prima parte = do
-  timer.setInterval(0L, checkMoisture);    // primo controllo umidità terreno  alla partenza
-  timer.setInterval(0L, checkWaterLevel);  // primo controllo livello dell'acqua alla partenza
+  timer.setInterval(5000L, checkMoisture);    // primo controllo umidità terreno  alla partenza
+  timer.setInterval(5000L, checkWaterLevel);  // primo controllo livello dell'acqua alla partenza
 }
 
 void loop() {
@@ -118,8 +119,8 @@ void loop() {
   timer.run();
 
   // Ciclo do-while, seconda parte = while | definitivo -> ogni 24 ore = 86400000L (?)
-  timer.setInterval(10000L, checkMoisture);
-  timer.setInterval(10000L, checkWaterLevel);
+  timer.setInterval(5000L, checkMoisture);
+  timer.setInterval(5000L, checkWaterLevel);
 
   // Risparmio energetico durante l'inattività, picccolo delay per evitare il consumo eccessivo della CPU
   delay(10);
