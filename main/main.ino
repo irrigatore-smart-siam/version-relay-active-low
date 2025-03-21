@@ -15,19 +15,16 @@ const uint8_t MOISTURESENSORPIN = 7;  // Sensore di umidità
 const uint8_t REDLEDPIN = 9;          // Elettrovalvola
 const uint8_t TRIGPIN = 3;            // Trigger del sensore a ultrasuoni
 const uint8_t ECHOPIN = 5;            // Echo del sensore a ultrasuoni
-const uint8_t LEDRGB = 11;            // LED RGB per indicare se c'è acqua o meno nel serbatoio (in mancanza o in aggiunta ad alexa)
-const uint8_t LEDRGB2 = 12;           // LED RGB per indicare se c'è acqua o meno nel serbatoio (in mancanza o in aggiunta ad alexa)
-const uint8_t PIEZO = 1;              // Piezo elettrico sonoro che abbiamo usato a lezione per indicare se c'è acqua o meno nel serbatoio (in mancanza o in aggiunta ad alexa)
+const uint8_t LEDRGB = 11;            // LED RGB per indicare se c'è acqua o meno nel serbatoio
+const uint8_t LEDRGB2 = 12;           // LED RGB per indicare se c'è acqua o meno nel serbatoio
 
 const uint16_t SOGLIA_UM = 7000;
+unsigned long valveTimer = 0;  // Timer per l'elettrovalvola
+bool valveOn = false;          // Stato dell'elettrovalvola
 
 BlynkTimer timer;
 
-// Funzione di callback per spegnere l'elettrovalvola
-void turnOffValve() {
-  digitalWrite(REDLEDPIN, LOW);
-}
-
+// Funzione per controllare l'umidità
 void checkMoisture() {
   int moistureValue = analogRead(MOISTURESENSORPIN);
   Serial.print("Umidità: ");
@@ -35,13 +32,22 @@ void checkMoisture() {
     
   Blynk.virtualWrite(V2, moistureValue); // invia il valore dell'umidità a Blynk su V2
 
-  if (moistureValue > SOGLIA_UM) {
-    digitalWrite(REDLEDPIN, HIGH); //"accensione" elettrovalvola per irrigazione
-    timer.setTimeout(3000L, turnOffValve);
-    //delay(3000);
-    //turnOffValve();
-  } else {
-    digitalWrite(REDLEDPIN, LOW);
+  // Se l'umidità è sopra la soglia e l'elettrovalvola non è già attiva
+  if (moistureValue > SOGLIA_UM && !valveOn) {
+    Serial.println("Attivazione elettrovalvola");
+    digitalWrite(REDLEDPIN, HIGH);  // Accende l'elettrovalvola
+    valveOn = true;                 // Imposta lo stato a ON
+    valveTimer = millis();          // Memorizza il tempo corrente
+  }
+}
+
+// Funzione separata per controllare il timer dell'elettrovalvola
+void checkValveTimer() {
+  // Controlla se l'elettrovalvola è attiva e se è passato 1 secondo
+  if (valveOn && (millis() - valveTimer >= 1000)) {
+    Serial.println("Spegnimento elettrovalvola");
+    digitalWrite(REDLEDPIN, LOW);   // Spegne l'elettrovalvola
+    valveOn = false;                // Reimposta lo stato a OFF
   }
 }
 
@@ -71,7 +77,7 @@ void checkWaterLevel() {
   // Invia la distanza a Blynk
   Blynk.virtualWrite(V1, distance);
 
-  // Controllo dei LED e del piezo
+  // Controllo dei LED
   if (distance > 4) {
       Blynk.virtualWrite(V3, 255);   // LED display blynk Rosso ACCESO
       Blynk.virtualWrite(V4, 0);     // LED display blynk Verde SPENTO
@@ -79,14 +85,12 @@ void checkWaterLevel() {
 
       digitalWrite(LEDRGB, HIGH);  // LED RGB Rosso
       digitalWrite(LEDRGB2, LOW);  // LED RGB Verde spento
-      digitalWrite(PIEZO, HIGH);   // piezo elettrico suona
   } else if (distance > 1 && distance < 4) {
       Blynk.virtualWrite(V3, 0);     // LED display blynk Rosso SPENTO
       Blynk.virtualWrite(V4, 255);   // LED display blynk Verde ACCESO
 
       digitalWrite(LEDRGB, LOW);   // LED RGB Rosso spento
       digitalWrite(LEDRGB2, HIGH); // LED RGB Verde acceso
-      digitalWrite(PIEZO, LOW);    // piezo elettrico non suona
   }
 }
 
@@ -97,31 +101,29 @@ void setup() {
   pinMode(ECHOPIN, INPUT);
   pinMode(LEDRGB, OUTPUT);
   pinMode(LEDRGB2, OUTPUT);
-  pinMode(PIEZO, OUTPUT);
 
   // Inizializzazione stato pin per risparmiare energia
   digitalWrite(REDLEDPIN, LOW);
   digitalWrite(LEDRGB, LOW);
   digitalWrite(LEDRGB2, LOW);
-  digitalWrite(PIEZO, LOW);
 
-  Serial.begin(9600);
+
+  Serial.begin(115200);
+  
+  Serial.println("Avvio del sistema di irrigazione");
 
   Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
 
-  // Ciclo do-while, prima parte = do
-  timer.setInterval(5000L, checkMoisture);    // primo controllo umidità terreno  alla partenza
-  timer.setInterval(5000L, checkWaterLevel);  // primo controllo livello dell'acqua alla partenza
+  // Configurazione timer per i controlli periodici
+  timer.setInterval(100L, checkValveTimer);    // controllo timer elettrovalvola ogni 100ms
+  timer.setInterval(10000L, checkMoisture);    // controllo umidità terreno ogni 10 secondi
+  timer.setInterval(10000L, checkWaterLevel);  // controllo livello dell'acqua ogni 10 secondi
 }
 
 void loop() {
   Blynk.run();
   timer.run();
-
-  // Ciclo do-while, seconda parte = while | definitivo -> ogni 24 ore = 86400000L (?)
-  timer.setInterval(5000L, checkMoisture);
-  timer.setInterval(5000L, checkWaterLevel);
-
-  // Risparmio energetico durante l'inattività, picccolo delay per evitare il consumo eccessivo della CPU
+  
+  // Risparmio energetico durante l'inattività
   delay(10);
- } 
+}
