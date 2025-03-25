@@ -12,7 +12,7 @@ char pass[] = "03GDVBH223";
 
 // Definizione pin per ESP32 Lolin S2 Mini Master
 const uint8_t MOISTURESENSORPIN = 7;  // Sensore di umidità
-const uint8_t REDLEDPIN = 9;          // Elettrovalvola
+const uint8_t RELAYPIN = 9;          // Pompa
 const uint8_t TRIGPIN = 3;            // Trigger del sensore a ultrasuoni
 const uint8_t ECHOPIN = 5;            // Echo del sensore a ultrasuoni
 const uint8_t LEDRGB = 11;            // LED RGB per indicare se c'è acqua o meno nel serbatoio
@@ -22,19 +22,19 @@ const uint8_t LEDRGB2 = 12;           // LED RGB per indicare se c'è acqua o me
 const uint8_t ANALOG_OUT_PIN = 10;     // Pin DAC per inviare il livello dell'acqua allo slave
 
 const uint16_t SOGLIA_UM = 7000;
-unsigned long valveTimer = 0;  // Timer per l'elettrovalvola
-bool valveOn = false;          // Stato dell'elettrovalvola
+unsigned long pumpTimer = 0;  // Timer per la pompa
+bool pumpOn = false;          // Stato della pompa
 unsigned long lastActivationTime = 0;  // Tempo dell'ultima attivazione
 float lastWaterLevel = 0;      // Ultimo livello dell'acqua misurato
 
 BlynkTimer timer;
 
-void checkValveTimer() {
-  // Controlla se l'elettrovalvola è attiva e se è passato 1 secondo
-  if (valveOn && (millis() - valveTimer >= 1000)) {
-    Serial.println("Spegnimento elettrovalvola");
-    digitalWrite(REDLEDPIN, LOW);   // Spegne l'elettrovalvola
-    valveOn = false;                // Reimposta lo stato a OFF
+void checkPumpTimer() {
+  // Controlla se la pompa è attiva e se è passato 1 secondo
+  if (pumpOn && (millis() - pumpTimer >= 1000)) {
+    Serial.println("Spegnimento pompa");
+    digitalWrite(RELAYPIN, LOW);   // Spegne la pompa
+    pumpOn = false;                // Reimposta lo stato a OFF
   }
 }
 
@@ -44,13 +44,13 @@ void checkMoisture() {
   // Controllo se è passato abbastanza tempo dall'ultima attivazione (10 secondi)
   unsigned long currentTime = millis();
   
-  // Se l'umidità è sopra la soglia, l'elettrovalvola non è già attiva, 
+  // Se l'umidità è sotto la soglia, la pompa non è già attiva, 
   // e sono passati almeno 10 secondi dall'ultima attivazione
-  if (moistureValue > SOGLIA_UM && !valveOn && (currentTime - lastActivationTime >= 10000)) {
-    Serial.println("Attivazione elettrovalvola");
-    digitalWrite(REDLEDPIN, HIGH);       // Accende l'elettrovalvola
-    valveOn = true;                      // Imposta lo stato a ON
-    valveTimer = currentTime;            // Memorizza il tempo per lo spegnimento
+  if (moistureValue > SOGLIA_UM && !pumpOn && (currentTime - lastActivationTime >= 30000)) {
+    Serial.println("Attivazione pompa");
+    digitalWrite(RELAYPIN, HIGH);       // Accende la pompa
+    pumpOn = true;                      // Imposta lo stato a ON
+    pumpTimer = currentTime;            // Memorizza il tempo per lo spegnimento
     lastActivationTime = currentTime;    // Aggiorna il tempo dell'ultima attivazione
   }
 }
@@ -114,7 +114,7 @@ void sendMoistureToBlynk() {
 }
 
 void setup() {
-  pinMode(REDLEDPIN, OUTPUT);
+  pinMode(RELAYPIN, OUTPUT);
   pinMode(TRIGPIN, OUTPUT);
   pinMode(ECHOPIN, INPUT);
   pinMode(LEDRGB, OUTPUT);
@@ -122,7 +122,7 @@ void setup() {
   pinMode(ANALOG_OUT_PIN, OUTPUT); // Configurazione del pin analogico di output
 
   // Inizializzazione stato pin per risparmiare energia
-  digitalWrite(REDLEDPIN, LOW);
+  digitalWrite(RELAYPIN, LOW);
   digitalWrite(LEDRGB, LOW);
   digitalWrite(LEDRGB2, LOW);
   analogWrite(ANALOG_OUT_PIN, 0);  // Inizializza il pin analogico a 0
@@ -134,7 +134,7 @@ void setup() {
   Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
 
   // Configurazione timer per i controlli periodici
-  timer.setInterval(100L, checkValveTimer);       // controllo timer elettrovalvola ogni 100ms
+  timer.setInterval(100L, checkPumpTimer);       // controllo timer pompa ogni 100ms
   timer.setInterval(10000L, checkWaterLevel);     // controllo livello dell'acqua ogni 10 secondi
   timer.setInterval(10000L, sendMoistureToBlynk); // invia dati umidità a Blynk ogni 10 secondi
 }
