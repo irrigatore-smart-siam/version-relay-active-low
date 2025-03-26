@@ -32,15 +32,7 @@ BlynkTimer timer;
 // Parametri per diagnostica e correzione sonar
 const int NUM_MEASUREMENTS = 10;
 const float SOUND_SPEED = 0.0343; // cm/microsecondo
-const float MAX_TANK_DEPTH = 12.0; // profondità massima del serbatoio in cm
-
-void checkPumpTimer() {
-  if (pumpOn && (millis() - pumpTimer >= 1000)) {
-    Serial.println("Spegnimento pompa");
-    digitalWrite(RELAYPIN, LOW);
-    pumpOn = false;
-  }
-}
+const float MAX_TANK_DEPTH = 10.0; // profondità massima del serbatoio in cm
 
 void checkMoisture() {
   int moistureValue = analogRead(MOISTURESENSORPIN);
@@ -48,7 +40,7 @@ void checkMoisture() {
   unsigned long currentTime = millis();
   
   if (moistureValue > SOGLIA_UM && !pumpOn && (currentTime - lastActivationTime >= 30000)) {
-    Serial.println("Attivazione pompa");
+    Serial.println("->ATTIVAZIONE POMPA");
     digitalWrite(RELAYPIN, HIGH);
     pumpOn = true;
     pumpTimer = currentTime;
@@ -56,48 +48,46 @@ void checkMoisture() {
   }
 }
 
-float measureDistance() {
-  // Funzione diagnostica per misurare la distanza
-  long totalDuration = 0;
-  int validMeasurements = 0;
-  
-  for (int i = 0; i < NUM_MEASUREMENTS; i++) {
-    // Genera impulso trigger
-    digitalWrite(TRIGPIN, LOW);
-    delayMicroseconds(2);
-    digitalWrite(TRIGPIN, HIGH);
-    delayMicroseconds(10);
-    digitalWrite(TRIGPIN, LOW);
-    
-    // Misura durata dell'eco
-    long duration = pulseIn(ECHOPIN, HIGH, 30000); // Timeout 30ms
-    
-    // Filtra misurazioni errate
-    if (duration > 0 && duration < 30000) {
-      totalDuration += duration;
-      validMeasurements++;
-    }
-    
-    delay(10);
+void checkPumpTimer() {
+  if (pumpOn && (millis() - pumpTimer >= 1000)) {
+    Serial.println("->SPEGNIMENTO POMPA");
+    digitalWrite(RELAYPIN, LOW);
+    pumpOn = false;
   }
+}
+
+float measureDistance() {
+  // Debug dettagliato per sensore a ultrasuoni
+  Serial.println("Inizio misurazione distanza*");
   
-  // Calcola distanza media
-  if (validMeasurements > 0) {
-    float avgDuration = totalDuration / validMeasurements;
-    float distance = (avgDuration * SOUND_SPEED) / 2;
+  // Assicurati che il pin trigger sia basso
+  digitalWrite(TRIGPIN, LOW);
+  delayMicroseconds(2);
+  
+  // Genera impulso trigger
+  digitalWrite(TRIGPIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIGPIN, LOW);
+  
+  // Misura durata dell'eco con timeout più lungo
+  long duration = pulseIn(ECHOPIN, HIGH, 38000); // Timeout 38ms
+  
+  // Calcola distanza se duration è valido
+  if (duration > 0) {
+    float distance = duration * 0.034 / 2; // Conversione in cm
     
-    // Debug diagnostico
-    Serial.print("Misurazioni valide: ");
-    Serial.print(validMeasurements);
+    //Serial.print("Durata impulso: ");
+    //Serial.print(duration);
     Serial.print("Distanza misurata: ");
     Serial.print(distance);
     Serial.println(" cm");
     
     // Inverti la distanza se necessario
-    return MAX_TANK_DEPTH - distance;
+    return constrain(MAX_TANK_DEPTH - distance, 0, MAX_TANK_DEPTH);
+  } else {
+    Serial.println("ERRORE: Nessun impulso rilevato dal sensore ultrasuoni!");
+    return -1; // Errore
   }
-  
-  return -1; // Errore
 }
 
 void checkWaterLevel() {
@@ -143,12 +133,14 @@ void sendMoistureToBlynk() {
 }
 
 void setup() {
+  // Configurazione dei pin
   pinMode(RELAYPIN, OUTPUT);
   pinMode(TRIGPIN, OUTPUT);
-  pinMode(ECHOPIN, INPUT);
+  pinMode(ECHOPIN, INPUT_PULLUP);  // Aggiunto INPUT_PULLUP per stabilità
   pinMode(LEDRGB, OUTPUT);
   pinMode(LEDRGB2, OUTPUT);
   pinMode(ANALOG_OUT_PIN, OUTPUT);
+  pinMode(MOISTURESENSORPIN, INPUT);
 
   // Inizializzazione stato pin
   digitalWrite(RELAYPIN, LOW);
@@ -156,16 +148,22 @@ void setup() {
   digitalWrite(LEDRGB2, LOW);
   analogWrite(ANALOG_OUT_PIN, 0);
 
+  // Inizializza comunicazione seriale
   Serial.begin(115200);
   
   Serial.println("Avvio del sistema di irrigazione - MASTER");
 
+  // Connessione Blynk
   Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
 
   // Configurazione timer
   timer.setInterval(100L, checkPumpTimer);
-  timer.setInterval(10000L, checkWaterLevel);
+  timer.setInterval(5000L, checkWaterLevel);  // Ridotto intervallo per debug
   timer.setInterval(10000L, sendMoistureToBlynk);
+
+  // Test iniziale sensore ultrasuoni
+  Serial.println("Test iniziale sensore ultrasuoni:");
+  measureDistance();
 }
 
 void loop() {
