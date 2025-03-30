@@ -39,7 +39,7 @@ void checkMoisture() {
   
   unsigned long currentTime = millis();
   
-  if (moistureValue > SOGLIA_UM && !pumpOn && (currentTime - lastActivationTime >= 30000)) {
+  if (moistureValue > SOGLIA_UM && !pumpOn && (currentTime - lastActivationTime >= 30000)) { //Attende 30 secondi prima di ripetere il ciclo, ma noi metteremo 24 ore (ovvero 86.400.000)
     Serial.println("->ATTIVAZIONE POMPA");
     digitalWrite(RELAYPIN, HIGH);
     pumpOn = true;
@@ -156,9 +156,22 @@ void setup() {
   // Connessione Blynk
   Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
 
+  // Controllo immediato dell'umidità
+  int moistureValue = analogRead(MOISTURESENSORPIN);
+  Serial.print("Umidità iniziale: ");
+  Serial.println(moistureValue);
+
+  if (moistureValue > SOGLIA_UM) {
+    Serial.println("-> ATTIVAZIONE POMPA (Startup)");
+    digitalWrite(RELAYPIN, HIGH);
+    pumpOn = true;
+    pumpTimer = millis();
+    lastActivationTime = millis();
+  }
+
   // Configurazione timer
   timer.setInterval(100L, checkPumpTimer);
-  timer.setInterval(5000L, checkWaterLevel);  // Ridotto intervallo per debug
+  timer.setInterval(5000L, checkWaterLevel);
   timer.setInterval(10000L, sendMoistureToBlynk);
 
   // Test iniziale sensore ultrasuoni
