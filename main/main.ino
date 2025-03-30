@@ -7,8 +7,8 @@
 #include <WiFiClient.h>
 #include <BlynkSimpleEsp32.h>
 
-char ssid[] = "TP-Link_BF56";
-char pass[] = "75291259";
+char ssid[] = "IoT - WIFI";
+char pass[] = "03GDVBH223";
 
 // Definizione pin per ESP32 Lolin S2 Mini Master
 const uint8_t MOISTURESENSORPIN = 7;  // Sensore di umidità
