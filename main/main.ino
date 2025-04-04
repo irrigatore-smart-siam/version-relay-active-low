@@ -20,7 +20,7 @@ const uint8_t GREEN_PIN = 12;  // pin per il verde
 const uint8_t BLUE_PIN = 16;  // Nuovo pin per il blu
 
 // Pin per comunicazione analogica con lo slave
-const uint8_t ANALOG_OUT_PIN = 10;     // Pin DAC per inviare il livello dell'acqua allo slave
+const uint8_t ANALOG_OUT_PIN = 18;     // Pin DAC per inviare il livello dell'acqua allo slave
 
 const uint16_t SOGLIA_UM = 7000;
 unsigned long pumpTimer = 0;
@@ -35,6 +35,9 @@ bool isBlueBlinking = false;
 unsigned long blueBlinkStartTime = 0;
 bool needsLedUpdate = false;  // Flag per forzare l'aggiornamento dei LED
 
+// Variabile per tracciare lo stato del livello dell'acqua per la comunicazione con lo slave
+bool waterLevelLow = false;
+
 BlynkTimer timer;
 
 // Parametri per diagnostica e correzione sonar
@@ -46,6 +49,7 @@ float lastWaterPercentage = 0;
 float measureDistance();
 float getInverseWaterPercentage(float distance);
 void updateLedStatus(float waterPercentage);
+void updateSlaveStatus(bool waterLow);
 
 void startBlueBlinking() {
     isBlueBlinking = true;
@@ -57,6 +61,19 @@ void startBlueBlinking() {
     digitalWrite(RED_PIN, LOW);
     digitalWrite(GREEN_PIN, LOW);
     digitalWrite(BLUE_PIN, HIGH);   // LED blu ON inizia acceso
+}
+
+void updateSlaveStatus(bool waterLow) {
+    // Invia un segnale analogico allo slave in base al livello dell'acqua
+    if (waterLow) {
+        // Invia un valore alto (circa 4V) allo slave quando l'acqua è bassa
+        analogWrite(ANALOG_OUT_PIN, 255);
+        Serial.println("Comando inviato allo SLAVE: Livello acqua BASSO");
+    } else {
+        // Invia un valore basso (0V) allo slave quando l'acqua è OK
+        analogWrite(ANALOG_OUT_PIN, 0);
+        Serial.println("Comando inviato allo SLAVE: Livello acqua OK");
+    }
 }
 
 void updateLedStatus(float waterPercentage) {
@@ -75,11 +92,23 @@ void updateLedStatus(float waterPercentage) {
         digitalWrite(RED_PIN, LOW);    // LED rosso OFF
         Blynk.virtualWrite(V3, 0);    // Rosso spento
         Blynk.virtualWrite(V4, 255);  // Verde acceso
+        
+        // Aggiorna lo stato per lo slave
+        if (waterLevelLow) {
+            waterLevelLow = false;
+            updateSlaveStatus(false);
+        }
     } else { // Serbatoio sotto il 50%
         digitalWrite(RED_PIN, HIGH);    // LED rosso ON
         digitalWrite(GREEN_PIN, LOW);  // LED verde OFF
         Blynk.virtualWrite(V3, 255);  // Rosso acceso
         Blynk.virtualWrite(V4, 0);    // Verde spento
+
+        // Aggiorna lo stato per lo slave
+        if (!waterLevelLow) {
+            waterLevelLow = true;
+            updateSlaveStatus(true);
+        }
     }
 }
 
@@ -234,7 +263,7 @@ void setup() {
   digitalWrite(RELAYPIN, LOW);
   digitalWrite(RED_PIN, LOW);    // LED rosso OFF
   digitalWrite(GREEN_PIN, LOW);  // LED verde OFF
-  digitalWrite(BLUE_PIN, LOW); // LED blu OFF
+  digitalWrite(BLUE_PIN, LOW);   // LED blu OFF
   analogWrite(ANALOG_OUT_PIN, 0);
 
   // Inizializza comunicazione seriale
@@ -261,12 +290,23 @@ void setup() {
     startBlueBlinking();
   }
 
+  // Controllo immediato del livello dell'acqua per impostare lo stato iniziale
+  float distance = measureDistance();
+  if (distance >= 0 && distance <= MAX_TANK_DEPTH) {
+    float waterPercentage = getInverseWaterPercentage(distance);
+    lastWaterPercentage = waterPercentage;
+    
+    // Imposta lo stato iniziale per lo slave
+    waterLevelLow = (waterPercentage <= 50);
+    updateSlaveStatus(waterLevelLow);
+  }
+
   // Configurazione timer
   timer.setInterval(100L, checkPumpTimer);
   timer.setInterval(5000L, checkWaterLevel);
   timer.setInterval(10000L, sendMoistureToBlynk);
-  timer.setInterval(50L, updateBlueBlink);    // Aggiorna il lampeggiamento del LED blu
-  timer.setInterval(100L, checkIfLedUpdateNeeded); // Controlla se è necessario aggiornare i LED
+  timer.setInterval(50L, updateBlueBlink);    
+  timer.setInterval(100L, checkIfLedUpdateNeeded); 
 }
 
 void loop() {
