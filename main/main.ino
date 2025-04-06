@@ -1,6 +1,6 @@
-#define BLYNK_TEMPLATE_ID "TMPL4ADZxyQKy"
-#define BLYNK_TEMPLATE_NAME "SiamTemplate"
-#define BLYNK_AUTH_TOKEN "ivLdN-NeQ0gOY_I3in3qTkis7cu0HhD9"
+#define BLYNK_TEMPLATE_ID "TMPL4VplPn5DM"
+#define BLYNK_TEMPLATE_NAME "Lolin"
+#define BLYNK_AUTH_TOKEN "NG3hog7xMC34G5Bt9DyOMcdp1a-iMvDt"
 #define BLYNK_PRINT Serial
 
 #include <WiFi.h>
@@ -51,7 +51,7 @@ float lastWaterPercentage = 0;
 
 // Dichiarazione anticipata di funzioni
 float measureDistance();
-float getInverseWaterPercentage(float distance);
+float getWaterPercentage(float distance);
 void updateLedStatus(float waterPercentage);
 void updateSlaveStatus(bool waterLow);
 void checkSlaveCommands();
@@ -222,9 +222,9 @@ float measureDistance() {
   }
 }
 
-float getInverseWaterPercentage(float distance) {
+float getWaterPercentage(float distance) {
   distance = constrain(distance, 0, MAX_TANK_DEPTH); // Limita tra 0 e 10 cm
-  return 100.0 - ((distance / MAX_TANK_DEPTH) * 100.0);
+  return (distance / MAX_TANK_DEPTH) * 100.0;  // Rimuovi il 100.0 -
 }
 
 void checkWaterLevel() {
@@ -238,7 +238,7 @@ void checkWaterLevel() {
   float distance = measureDistance();
   
   if (distance >= 0 && distance <= MAX_TANK_DEPTH) {
-    float waterPercentage = getInverseWaterPercentage(distance);
+    float waterPercentage = getWaterPercentage(distance);
     lastWaterPercentage = waterPercentage;
     
     Serial.print("Distanza: ");
@@ -269,7 +269,7 @@ void checkIfLedUpdateNeeded() {
     
     float distance = measureDistance();
     if (distance >= 0 && distance <= MAX_TANK_DEPTH) {
-      float waterPercentage = getInverseWaterPercentage(distance);
+      float waterPercentage = getWaterPercentage(distance);
       updateLedStatus(waterPercentage);
     } else {
       // In caso di errore del sensore, usa l'ultimo valore valido
@@ -332,7 +332,7 @@ void setup() {
   // Controllo immediato del livello dell'acqua per impostare lo stato iniziale
   float distance = measureDistance();
   if (distance >= 0 && distance <= MAX_TANK_DEPTH) {
-    float waterPercentage = getInverseWaterPercentage(distance);
+    float waterPercentage = getWaterPercentage(distance);
     lastWaterPercentage = waterPercentage;
     
     // Imposta lo stato iniziale per lo slave
