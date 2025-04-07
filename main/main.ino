@@ -181,18 +181,10 @@ void checkWaterLevel() {
     Serial.print(waterPercentage);
     Serial.println("%");
     
-    // Solo se il livello è superiore al 10% invia a Blynk
-    if (waterPercentage > 10.0) {
-      Blynk.virtualWrite(V1, waterPercentage); // Invia la percentuale a Blynk
+    Blynk.virtualWrite(V1, waterPercentage);
       
-      // Aggiorna lo stato dei LED usando la funzione centralizzata
-      updateLedStatus(waterPercentage);
-    }
-    else {
-      Serial.println("Livello acqua inferiore al 10%, non inviato a Blynk");
-      // Aggiorna lo stato dei LED con valori bassi
-      updateLedStatus(0); // Considera come acqua bassa
-    }
+    // Aggiorna lo stato dei LED usando la funzione centralizzata
+    updateLedStatus(waterPercentage);
   }
 }
 
