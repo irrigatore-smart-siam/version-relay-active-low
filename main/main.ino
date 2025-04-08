@@ -115,7 +115,7 @@ void checkMoisture() {
    //Attende 10 secondi prima di ripetere il ciclo, ma noi metteremo 24 ore (ovvero 86400000)
   if (moistureValue > SOGLIA_UM && !pumpOn && (currentTime - lastActivationTime >= 10000)) {
     Serial.println("->ATTIVAZIONE POMPA");
-    digitalWrite(RELAYPIN, HIGH);
+    digitalWrite(RELAYPIN, LOW);
     pumpOn = true;
     pumpTimer = currentTime;
     lastActivationTime = currentTime;
@@ -128,7 +128,7 @@ void checkMoisture() {
 void checkPumpTimer() {
   if (pumpOn && (millis() - pumpTimer >= 1000)) {
     Serial.println("->SPEGNIMENTO POMPA");
-    digitalWrite(RELAYPIN, LOW);
+    digitalWrite(RELAYPIN, HIGH);
     pumpOn = false;
   }
 }
@@ -232,7 +232,7 @@ void setup() {
   pinMode(MOISTURESENSORPIN, INPUT);
 
   // Inizializzazione stato pin
-  digitalWrite(RELAYPIN, LOW);
+  digitalWrite(RELAYPIN, HIGH);
   digitalWrite(RED_PIN, LOW);    // LED rosso OFF
   digitalWrite(GREEN_PIN, LOW);  // LED verde OFF
   digitalWrite(BLUE_PIN, LOW);   // LED blu OFF
@@ -253,7 +253,7 @@ void setup() {
 
   if (moistureValue > SOGLIA_UM) {
     Serial.println("-> ATTIVAZIONE POMPA (Startup)");
-    digitalWrite(RELAYPIN, HIGH);
+    digitalWrite(RELAYPIN, LOW);
     pumpOn = true;
     pumpTimer = millis();
     lastActivationTime = millis();
